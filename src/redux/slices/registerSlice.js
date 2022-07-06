@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { localUser } from '../../pages/Main';
 
 const registerSlice = createSlice({
   name: 'register',
@@ -32,20 +33,22 @@ const registerSlice = createSlice({
         return;
       }
 
-      if (action.payload.password && action.payload.password.length >= 6) {
-        state.user.password = action.payload.password;
-      } else if (
-        action.payload.password &&
-        action.payload.password.length < 6 &&
-        action.payload.password.length > 1
-      ) {
-        state.validate.type = 'password';
-        state.validate.text = 'Пароль должен содержать от 6 символов';
-        return;
-      } else {
-        state.validate.type = 'password';
-        state.validate.text = 'Придумайте пароль';
-        return;
+      if (!localUser) {
+        if (action.payload.password && action.payload.password.length >= 6) {
+          state.user.password = action.payload.password;
+        } else if (
+          action.payload.password &&
+          action.payload.password.length < 6 &&
+          action.payload.password.length > 1
+        ) {
+          state.validate.type = 'password';
+          state.validate.text = 'Пароль должен содержать от 6 символов';
+          return;
+        } else {
+          state.validate.type = 'password';
+          state.validate.text = 'Придумайте пароль';
+          return;
+        }
       }
 
       if (action.payload.name && !nameReg.test(action.payload.name)) {
@@ -79,6 +82,8 @@ const registerSlice = createSlice({
         state.validate.text = 'Введите дату своего рождения';
         return;
       }
+
+      localStorage.setItem('user', JSON.stringify({ ...state.user, password: null }));
     },
     clearUser(state) {
       state.user.email = null;
@@ -89,6 +94,8 @@ const registerSlice = createSlice({
 
       state.validate.type = '';
       state.validate.text = '';
+
+      localStorage.removeItem('user');
     },
   },
 });

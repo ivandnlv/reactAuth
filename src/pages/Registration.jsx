@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { registerNewUser, clearUser } from '../redux/slices/registerSlice';
+import { useNavigate } from 'react-router-dom';
 
 const Registration = () => {
   const [email, setEmail] = useState('');
@@ -11,13 +13,20 @@ const Registration = () => {
   const [surname, setSurname] = useState('');
   const [date, setDate] = useState('');
 
-  const user = useSelector((state) => state.register.user);
-  const validate = useSelector((state) => state.register.validate);
-
+  const auth = getAuth();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const validate = useSelector((state) => state.register.validate);
 
   const onRegistrationClick = () => {
     dispatch(registerNewUser({ email, password, name, surname, date }));
+    if (!validate.type) {
+      createUserWithEmailAndPassword(auth, email, password).catch((error) => {
+        alert(error);
+      });
+      navigate('/');
+    }
   };
 
   return (

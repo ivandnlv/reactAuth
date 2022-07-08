@@ -1,122 +1,87 @@
-import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { registerNewUser, clearUser } from '../redux/slices/registerSlice';
-import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { useForm } from 'react-hook-form';
+import { addNewUser, addUserToLocal } from '../redux/slices/userSlice';
+
+export const emailReg = /^[A-Z0-9._%+-]+@[A-Z0-9-]+.+.[A-Z]{2,4}$/i;
 
 const Registration = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [date, setDate] = useState('');
-
-  const auth = getAuth();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const validate = useSelector((state) => state.register.validate);
+  const navigate = useNavigate();
 
-  const onRegistrationClick = () => {
-    dispatch(registerNewUser({ email, password, name, surname, date }));
-    if (!validate.type) {
-      createUserWithEmailAndPassword(auth, email, password).catch((error) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: 'onBlur',
+  });
+
+  const onSubmitForm = (data) => {
+    const auth = getAuth();
+    createUserWithEmailAndPassword(auth, data.email, data.password)
+      .then((userCredential) => {
+        const { accessToken, email, uid } = userCredential.user;
+        dispatch(addNewUser({ token: accessToken, email, id: uid }));
+        dispatch(addUserToLocal());
+        navigate('/');
+      })
+      .catch((error) => {
         alert(error);
       });
-      navigate('/');
-    }
+    reset();
   };
 
   return (
-    <Form>
-      <Link to="/">
-        <Button variant="primary" type="submit" onClick={() => dispatch(clearUser())}>
+    <Form onSubmit={handleSubmit(onSubmitForm)}>
+      <Link to="/login">
+        <Button variant="primary" type="submit">
           Назад
         </Button>
       </Link>
-      <Form.Group
-        className="mb-3 mt-3"
-        controlId="formBasicEmail"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}>
-        <Form.Label className={validate.type === 'email' && 'text-danger'}>
-          {validate.type === 'email' ? validate.text : 'Адрес электронной почты'}
+      <Form.Group className="mb-3 mt-3" controlId="formBasicEmail">
+        <Form.Label className={errors.email?.message && 'text-danger'}>
+          {errors.email?.message || 'Введите email'}
         </Form.Label>
         <Form.Control
-          type="email"
+          type="text"
           placeholder="Введите свой email"
-          className={validate.type === 'email' && 'border-danger'}
+          className={errors.email?.message && 'border-danger'}
+          {...register('email', {
+            required: 'Данное поле обязательно для заполнения',
+            pattern: {
+              value: emailReg,
+              message: 'Электронная почта должна иметь вид pochta@mail.ru',
+            },
+          })}
         />
       </Form.Group>
 
-      <Form.Group
-        className="mb-3"
-        controlId="formBasicPassword"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}>
-        <Form.Label className={validate.type === 'password' && 'text-danger'}>
-          {validate.type === 'password' ? validate.text : 'Пароль'}
+      <Form.Group className="mb-3" controlId="formBasicPassword">
+        <Form.Label className={errors.password?.message && 'text-danger'}>
+          {errors.password?.message || 'Введите пароль'}
         </Form.Label>
         <Form.Control
           type="password"
           placeholder="Придумайте пароль"
-          className={validate.type === 'password' && 'border-danger'}
+          className={errors.password?.message && 'border-danger'}
+          {...register('password', {
+            required: 'Данное поле обязательно для заполнения',
+            minLength: {
+              value: 6,
+              message: 'Пароль должен содержать не менее 6 символов',
+            },
+          })}
         />
       </Form.Group>
-
-      <div className="row">
-        <Form.Group
-          className="mb-3 mt-3 col"
-          controlId="formBasicName"
-          value={name}
-          onChange={(e) => setName(e.target.value)}>
-          <Form.Label className={validate.type === 'name' && 'text-danger'}>
-            {validate.type === 'name' ? validate.text : 'Ваше имя'}
-          </Form.Label>
-          <Form.Control
-            type="text"
-            placeholder="Например, Иван"
-            className={validate.type === 'name' && 'border-danger'}
-          />
-        </Form.Group>
-
-        <Form.Group
-          className="mb-3 mt-3 col"
-          controlId="formBasicSurname"
-          value={surname}
-          onChange={(e) => setSurname(e.target.value)}>
-          <Form.Label className={validate.type === 'surname' && 'text-danger'}>
-            {validate.type === 'surname' ? validate.text : 'Ваша фамилия'}
-          </Form.Label>
-          <Form.Control
-            type="text"
-            placeholder="Например, Иванов"
-            className={validate.type === 'surname' && 'border-danger'}
-          />
-        </Form.Group>
-      </div>
-
-      <div className="row">
-        <Form.Group
-          className="mb-3 mt-3 col-md-auto"
-          controlId="formBasicDate"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}>
-          <Form.Label className={validate.type === 'date' && 'text-danger'}>
-            {validate.type === 'date' ? validate.text : 'Введите дату рождения'}
-          </Form.Label>
-          <Form.Control
-            type="date"
-            placeholder="Например, Иванов"
-            className={validate.type === 'date' && 'border-danger'}
-          />
-        </Form.Group>
-      </div>
       <div className="row">
         <div className="col">
-          <Button variant="success" type="button" onClick={onRegistrationClick}>
+          <Button variant="success" type="submit">
             Зарегистрироваться
           </Button>
         </div>
